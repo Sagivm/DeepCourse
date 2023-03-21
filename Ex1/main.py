@@ -42,7 +42,7 @@ def linear_forward(A: np.ndarray, W: np.ndarray, B: np.ndarray) -> dict:
     :rtype: dict
     """
     return {
-        "Z": np.transpose(W) * A + B,
+        "Z": A.dot(W) + B,
         "linear_cache": {
             "A": A,
             "W": W,
@@ -61,9 +61,9 @@ def softmax(Z: np.ndarray) -> dict:
         activation_cache: Z
     :rtype: dict
     """
-    Z_sum = np.sum(np.exp(Z))
+    Z_sum = np.sum(np.exp(Z), axis=-1)
     return {
-        "A": np.exp(Z) / Z_sum,
+        "A": np.divide(np.transpose(np.exp(Z)), Z_sum).transpose(),
         "activation_cahce": Z
     }
 
@@ -84,6 +84,40 @@ def relu(Z: np.ndarray) -> dict:
     }
 
 
+def L_model_forward(X: np.ndarray, parameters: dict, use_batchnorm: bool = False):
+    """
+
+    :param X: matrix of inputs
+    :type X: np.ndarray
+    :param parameters: a dict like object containing W and b
+    :type parameters: dict
+    :param use_batchnorm: if use batch or not
+    :type use_batchnorm: bool
+    :return:
+        dictionary containing the activation of the ANN represented by the parameters on X and cache actions
+    :rtype:
+        dict
+    """
+    cache = list()
+    A = X
+    for W_i, b_i in zip(parameters["W"], parameters["b"]):
+        cache.append(dict())
+        Z, cache[-1]["linear_cache"] = list(linear_forward(A, W_i, b_i).values())
+        if use_batchnorm:
+            raise NotImplementedError()
+        A, cache[-1]["activation_cache"] = list(relu(Z).values())
+
+    cache.append(dict())
+    y, cache[-1]["activation_cache"] = list(softmax(A).values())
+    return y, cache
+
+
+def compute_cost(Al: np.ndarray, Y: np.ndarray):
+    pass
+
+
 if __name__ == "__main__":
-    x = initialize_parameters([3, 4, 5])
-    # linear_forwward()
+    parameters = initialize_parameters([5, 4, 2])
+    X = np.random.randn(10, 5)
+    r = L_model_forward(X, parameters)
+    t = 0
