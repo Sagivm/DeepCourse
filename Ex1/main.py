@@ -1,5 +1,9 @@
 # IMPORTS
 import numpy as np
+from Ex1.util import *
+import numpy as np, pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.metrics import accuracy_score
 
 
 def initialize_parameters(layers_dims: list) -> dict:
@@ -14,12 +18,13 @@ def initialize_parameters(layers_dims: list) -> dict:
     """
     # Create W
 
-    W_sizes = [(layers_dims[i], layers_dims[i + 1]) for i, _ in enumerate(layers_dims[:-1])]
+    W_sizes = [(layers_dims[i + 1], layers_dims[i]) for i, _ in enumerate(layers_dims[:-1])]
     W = [np.random.randn(*Wi_size) for Wi_size in W_sizes]
 
     # create b
 
-    b = np.zeros(len(layers_dims) - 1)
+    b_sizes = layers_dims[1:]
+    b = [np.zeros((1, bi_size)) for bi_size in b_sizes]
 
     return {
         "W": W,
@@ -42,7 +47,7 @@ def linear_forward(A: np.ndarray, W: np.ndarray, B: np.ndarray) -> dict:
     :rtype: dict
     """
     return {
-        "Z": A.dot(W) + B,
+        "Z": A.dot(W.T) + B,
         "linear_cache": {
             "A": A,
             "W": W,
@@ -64,7 +69,9 @@ def softmax(Z: np.ndarray) -> dict:
     Z_sum = np.sum(np.exp(Z), axis=-1)
     return {
         "A": np.divide(np.transpose(np.exp(Z)), Z_sum).transpose(),
-        "activation_cahce": Z
+        "activation_cahce": {
+            "Z": Z
+        }
     }
 
 
@@ -80,7 +87,9 @@ def relu(Z: np.ndarray) -> dict:
         """
     return {
         "A": np.maximum(0, Z),
-        "activation_cahce": Z
+        "activation_cahce": {
+            "Z": Z
+        }
     }
 
 
@@ -100,24 +109,189 @@ def L_model_forward(X: np.ndarray, parameters: dict, use_batchnorm: bool = False
     """
     cache = list()
     A = X
-    for W_i, b_i in zip(parameters["W"], parameters["b"]):
+
+    # Relu layers
+    for W_i, b_i in zip(parameters["W"][:-1], parameters["b"][:-1]):
         cache.append(dict())
         Z, cache[-1]["linear_cache"] = list(linear_forward(A, W_i, b_i).values())
         if use_batchnorm:
             raise NotImplementedError()
+
         A, cache[-1]["activation_cache"] = list(relu(Z).values())
 
+    # Softmax layer
     cache.append(dict())
-    y, cache[-1]["activation_cache"] = list(softmax(A).values())
+    Z, cache[-1]["linear_cache"] = list(linear_forward(A, parameters["W"][-1], parameters["b"][-1]).values())
+    y, cache[-1]["activation_cache"] = list(softmax(Z).values())
     return y, cache
 
 
 def compute_cost(Al: np.ndarray, Y: np.ndarray):
-    pass
+    """
+    Compute loss(cost) using prediction(Al) and true values(Y)
+    :param Al:
+    :type Al:
+    :param Y:
+    :type Y:
+    :return:
+    :rtype:
+    """
+    return np.sum(Y + 1 * np.log(Al + 1)) / Y.shape[0]  # +1 to avoid log 0
 
 
+def apply_batchnorm(A: np.ndarray) -> np.ndarray:
+    NotImplementedError()
+
+
+# Section 2
+
+
+def linear_backward(dZ: np.ndarray, cache: dict):
+    """
+Implements the linear part of the backward propagation process for a single layer
+    :param dZ: the gradient of the cost with respect to the linear output of the current laye
+    :type dZ: np.ndarraty
+    :param cache:
+    :type cache: dict
+    :return:
+        tuple of derivatives dA,dW,dB
+    :rtype:
+    """
+    dA = np.dot(dZ, cache["W"])
+    dW = np.dot(cache['A'].T, dZ)
+    dB = np.sum(dZ, axis=0, keepdims=True)
+    return dA, dW, dB
+
+
+def linear_activation_backward(dA: np.ndarray, cache: dict, activation):
+    """
+    Implements the backward propagation for the LINEAR->ACTIVATION layer. The function first computes dZ and then applies the linear_backward function.
+    :param dA: post activation gradient of the current layer
+    :type dA: np.ndarray
+    :param cache: contains both the linear cache and the activations cache
+    :type cache: dict
+    :param activation: activation backward function
+    :type activation: function
+    :return:
+                tuple of derivatives dA,dW,dB
+    :rtype:
+    """
+    dZ = activation(dA, cache['activation_cache'])
+    return linear_backward(dZ, cache['linear_cache'])
+
+
+def relu_backward(dA: np.ndarray, activation_catch: dict):
+    """
+    Implements backward propagation for a ReLU unit
+    :param dA: the post-activation gradient
+    :type dA: np.ndarray
+    :param activation_catch: contains Z (stored during the forward propagation)
+    :type activation_catch: dict
+    :return:
+        derivative of Z
+    :rtype:
+        np.ndarray
+    """
+    dZ = np.array(dA, copy=True)
+    dZ[activation_catch['Z'] <= 0] = 0
+    return dZ
+
+
+def softmax_backward(dA, activation_catch):
+    # TODO: wtf
+    return dA
+
+
+def l_model_backward(Al: np.ndarray, Y: np.ndarray, caches: dict):
+    """
+    Implement the backward propagation process for the entire network.
+    :param Al: the probabilities vector, the output of the forward propagation
+    :type Al: np.ndarray
+    :param Y: the true labels vector (the "ground truth" - true classifications)
+    :type Y: np.ndarray
+    :param caches: contains Z (stored during the forward propagation)
+    :type caches: dict
+    :return:
+    gradient of the cost with respect to Z
+    :rtype:
+    np.ndarray
+    """
+    layers = len(caches) - 1
+    grads = dict()
+
+    # loss = compute_cost(Al, Y)  # maybe dz
+
+    num_samples = len(Y)
+
+    # TODO: understand score better
+    
+    ## compute the gradient on predictions
+    dscores = Al.copy()
+    dscores[range(num_samples), Y] -= 1
+    dscores /= num_samples
+
+    dA_curr = dscores
+
+    # Layers update
+    for i, layer in enumerate(reversed(caches)):
+        grads[f"dA_{layers - i}"], grads[f"dW_{layers - i}"], grads[f"dB_{layers - i}"] = \
+            linear_activation_backward(dA_curr, layer, softmax_backward) if i==0 else linear_activation_backward(grads[f"dA_{layers - i + 1}"], layer, relu_backward)
+        dA = grads[f"dA_{layers - i}"]
+    return grads
+
+
+def update_parameters(parameters: dict, grads: dict, learning_rate: float):
+    """
+    Updates parameters using gradient descent
+    :param parameters: parameters of the ANN
+    :type parameters: dict
+    :param grads: – a python dictionary containing the gradients (generated by L_model_backward)
+    :type grads: dict
+    :param learning_rate: the learning rate used to update
+    :type learning_rate: float
+    :return:
+        Updated parameters of the ANN
+    :rtype:
+        dict
+    """
+    for index, _ in enumerate(parameters["W"]):
+        parameters['W'][index] -= learning_rate * grads[f'dW_{index}'].T
+        parameters['b'][index] -= learning_rate * grads[f'dB_{index}']
+    return parameters
+
+
+# For testing
 if __name__ == "__main__":
-    parameters = initialize_parameters([5, 4, 2])
-    X = np.random.randn(10, 5)
-    r = L_model_forward(X, parameters)
-    t = 0
+    def get_data(path):
+        data = pd.read_csv(path, index_col=0)
+
+        cols = list(data.columns)
+        target = cols.pop()
+
+        X = data[cols].copy()
+        y = data[target].copy()
+
+        y = LabelEncoder().fit_transform(y)
+
+        return np.array(X), np.array(y)
+
+
+    X, Y = get_data(r'iris.csv')
+
+    parameters = initialize_parameters([3, 6, 8, 10, 3])
+    # X = np.random.randn(20, 3)
+    # Y = np.random.randint(3, size=20)
+
+    Y_hot = np.zeros((Y.size, np.max(Y) + 1))
+    Y_hot[np.arange(Y.size), Y] = 1
+
+    r, cache = L_model_forward(X, parameters)
+    r_class = np.argmax(r, axis=-1)
+    print(f"Acc - {accuracy_score(r_class, Y)} Cost - {compute_cost(r_class,Y)}")
+
+    for i in range(1, 100):
+        r_class = np.argmax(r, axis=-1)
+        grads = l_model_backward(to_one_hot(r_class,3), Y, cache)
+        parameters = update_parameters(parameters, grads, 0.01)
+        r, cache = L_model_forward(X, parameters)
+        print(f"Acc - {accuracy_score(np.argmax(r,axis=-1),Y)} Cost - {compute_cost(np.argmax(r, axis=-1),Y)}")
