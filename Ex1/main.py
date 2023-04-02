@@ -170,14 +170,14 @@ def linear_backward(dZ: np.ndarray, cache: dict):
     """
 Implements the linear part of the backward propagation process for a single layer
     :param dZ: the gradient of the cost with respect to the linear output of the current laye
-    :type dZ: np.ndarraty
+    :type dZ: np.ndarray
     :param cache:
     :type cache: dict
     :return:
         tuple of derivatives dA,dW,dB
     :rtype:
     """
-    dA = np.dot(dZ, cache["W"])
+    dA = np.dot(dZ, cache["W"].T)
     dW = np.dot(cache['A'].T, dZ)
     dB = np.sum(dZ, axis=0, keepdims=True)
     return dA, dW, dB
@@ -274,7 +274,7 @@ def update_parameters(parameters: dict, grads: dict, learning_rate: float):
     :rtype:
         dict
     """
-    for index, _ in enumerate(parameters["W"]):
+    for index in range(len(parameters["W"])):
         parameters['W'][index] -= learning_rate * grads[f'dW_{index}'].T
         parameters['b'][index] -= learning_rate * grads[f'dB_{index}']
     return parameters
