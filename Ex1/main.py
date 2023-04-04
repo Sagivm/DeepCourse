@@ -5,6 +5,31 @@ import numpy as np, pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score
 
+def initialize_parameters_dan(layers_dims: list) -> dict:
+    """
+    Create an ANN architecture depending on layers_dims
+    :param layers_dims: list of layers dimentions
+    :type layers_dims: list
+    :return: dictionary built as follows:
+        W: list of matrices representing layer's weights, initialized randomly,
+        b: list of biases for each layer, initialized to zero
+    :rtype: dict
+    """
+    # Create W
+
+    W_sizes = [(next_dim, current_dim) for current_dim, next_dim in zip(layers_dims[:-1], layers_dims[1:])]
+    W = [np.random.randn(*Wi_size) for Wi_size in W_sizes]
+
+    # create b
+
+    b_sizes = layers_dims[1:]
+    b = [np.zeros((bi_size, 1)) for bi_size in b_sizes]
+
+    return {
+        "W": W,
+        "b": b
+    }
+
 
 def initialize_parameters(layers_dims: list) -> dict:
     """
@@ -18,7 +43,7 @@ def initialize_parameters(layers_dims: list) -> dict:
     """
     # Create W
 
-    W_sizes = [(layers_dims[i + 1], layers_dims[i]) for i, _ in enumerate(layers_dims[:-1])]
+    W_sizes = [(layers_dims[i], layers_dims[i+1]) for i, _ in enumerate(layers_dims[:-1])]
     W = [np.random.randn(*Wi_size) for Wi_size in W_sizes]
 
     # create b
@@ -47,7 +72,7 @@ def linear_forward(A: np.ndarray, W: np.ndarray, B: np.ndarray) -> dict:
     :rtype: dict
     """
     return {
-        "Z": A.dot(W.T) + B,
+        "Z": np.dot(A,W) + B,
         "linear_cache": {
             "A": A,
             "W": W,
@@ -68,8 +93,8 @@ def softmax(Z: np.ndarray) -> dict:
     """
     Z_sum = np.sum(np.exp(Z), axis=-1)
     return {
-        "A": np.divide(np.transpose(np.exp(Z)), Z_sum).transpose(),
-        "activation_cahce": {
+        "A": np.exp(Z) / np.sum(np.exp(Z), axis=1, keepdims=True),
+        "activation_cache": {
             "Z": Z
         }
     }
@@ -87,7 +112,7 @@ def relu(Z: np.ndarray) -> dict:
         """
     return {
         "A": np.maximum(0, Z),
-        "activation_cahce": {
+        "activation_cache": {
             "Z": Z
         }
     }
@@ -157,7 +182,7 @@ Implements the linear part of the backward propagation process for a single laye
         tuple of derivatives dA,dW,dB
     :rtype:
     """
-    dA = np.dot(dZ, cache["W"])
+    dA = np.dot(dZ, cache["W"].T)
     dW = np.dot(cache['A'].T, dZ)
     dB = np.sum(dZ, axis=0, keepdims=True)
     return dA, dW, dB
@@ -255,7 +280,7 @@ def update_parameters(parameters: dict, grads: dict, learning_rate: float):
         dict
     """
     for index, _ in enumerate(parameters["W"]):
-        parameters['W'][index] -= learning_rate * grads[f'dW_{index}'].T
+        parameters['W'][index] -= learning_rate * grads[f'dW_{index}']
         parameters['b'][index] -= learning_rate * grads[f'dB_{index}']
     return parameters
 
@@ -289,7 +314,7 @@ if __name__ == "__main__":
     r_class = np.argmax(r, axis=-1)
     print(f"Acc - {accuracy_score(r_class, Y)} Cost - {compute_cost(r_class,Y)}")
 
-    for i in range(1, 100):
+    for i in range(1, 200):
         r_class = np.argmax(r, axis=-1)
         grads = l_model_backward(to_one_hot(r_class,3), Y, cache)
         parameters = update_parameters(parameters, grads, 0.01)
