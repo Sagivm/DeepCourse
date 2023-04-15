@@ -1,7 +1,9 @@
 # IMPORTS
+from typing import Callable
+
 import numpy as np
-from Ex1.util import *
-import numpy as np, pandas as pd
+# from util import *
+import pandas as pd
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import accuracy_score
 
@@ -43,7 +45,7 @@ def initialize_parameters(layers_dims: list) -> dict:
     """
     # Create W
 
-    W_sizes = [(layers_dims[i], layers_dims[i+1]) for i, _ in enumerate(layers_dims[:-1])]
+    W_sizes = [(next_dim, current_dim) for current_dim, next_dim in zip(layers_dims[:-1], layers_dims[1:])]
     W = [np.random.randn(*Wi_size) for Wi_size in W_sizes]
 
     # create b
@@ -91,10 +93,9 @@ def softmax(Z: np.ndarray) -> dict:
         activation_cache: Z
     :rtype: dict
     """
-    Z_sum = np.sum(np.exp(Z), axis=-1)
     return {
-        "A": np.exp(Z) / np.sum(np.exp(Z), axis=1, keepdims=True),
-        "activation_cache": {
+        "A": np.exp(Z) / np.exp(Z).sum(),
+        "activation_cahce": {
             "Z": Z
         }
     }
@@ -118,6 +119,24 @@ def relu(Z: np.ndarray) -> dict:
     }
 
 
+def linear_activation_forward(A_prev: np.ndarray, W: np.ndarray, B: np.ndarray,
+                              activation: Callable[[np.ndarray], dict]) -> dict:
+    cache = {}
+    linear = linear_forward(A_prev, W, B)
+    z, linear_cache = linear['Z'], linear['linear_cache']
+
+    active = activation(z)
+    a, activation_cache = active['A'], active['activation_cache']
+
+    cache.update(linear_cache)
+    cache.update(activation_cache)
+
+    return {
+        "A": a,
+        "cache": cache
+    }
+
+
 def L_model_forward(X: np.ndarray, parameters: dict, use_batchnorm: bool = False):
     """
 
@@ -125,30 +144,31 @@ def L_model_forward(X: np.ndarray, parameters: dict, use_batchnorm: bool = False
     :type X: np.ndarray
     :param parameters: a dict like object containing W and b
     :type parameters: dict
-    :param use_batchnorm: if use batch or not
+    :param use_batchnorm: whether to use batch normalization or not
     :type use_batchnorm: bool
     :return:
         dictionary containing the activation of the ANN represented by the parameters on X and cache actions
     :rtype:
         dict
     """
-    cache = list()
+    cache_list = list()
     A = X
 
     # Relu layers
     for W_i, b_i in zip(parameters["W"][:-1], parameters["b"][:-1]):
-        cache.append(dict())
-        Z, cache[-1]["linear_cache"] = list(linear_forward(A, W_i, b_i).values())
+        results = linear_activation_forward(A, W_i, b_i, relu)
+        A = results['A']
         if use_batchnorm:
             raise NotImplementedError()
 
-        A, cache[-1]["activation_cache"] = list(relu(Z).values())
+        cache_list.append(results['cache'])
 
     # Softmax layer
-    cache.append(dict())
-    Z, cache[-1]["linear_cache"] = list(linear_forward(A, parameters["W"][-1], parameters["b"][-1]).values())
-    y, cache[-1]["activation_cache"] = list(softmax(Z).values())
-    return y, cache
+    cache = {}
+    Z, cache["linear_cache"] = list(linear_forward(A, parameters["W"][-1], parameters["b"][-1]).values())
+    y, cache["activation_cache"] = list(softmax(Z).values())
+    cache_list.append(cache)
+    return y, cache_list
 
 
 def compute_cost(Al: np.ndarray, Y: np.ndarray):
@@ -175,7 +195,7 @@ def linear_backward(dZ: np.ndarray, cache: dict):
     """
 Implements the linear part of the backward propagation process for a single layer
     :param dZ: the gradient of the cost with respect to the linear output of the current laye
-    :type dZ: np.ndarraty
+    :type dZ: np.ndarray
     :param cache:
     :type cache: dict
     :return:
@@ -279,8 +299,8 @@ def update_parameters(parameters: dict, grads: dict, learning_rate: float):
     :rtype:
         dict
     """
-    for index, _ in enumerate(parameters["W"]):
-        parameters['W'][index] -= learning_rate * grads[f'dW_{index}']
+    for index in range(len(parameters["W"])):
+        parameters['W'][index] -= learning_rate * grads[f'dW_{index}'].T
         parameters['b'][index] -= learning_rate * grads[f'dB_{index}']
     return parameters
 
