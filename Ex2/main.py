@@ -1,33 +1,32 @@
-
-from Ex2.util.format_dataset import *
-from Ex2 import *
-from Ex2.siamese_model import build_base_model
-# def get_images(path):
-#     names = os.listdir(path)
-#     images = []
-#     for name in names:
-#         name_path = os.path.join(path,name)
-#         images += [f"{name}/{name_image}" for name_image in os.listdir(name_path)]
-#
-#     df = pd.DataFrame(images,columns=None)
-#     df.to_csv('list.csv', index=False)
-#
-#
-# def count_items_in_subdir(root_dir):
-#     t = list()
-#     for subdir, dirs, files in os.walk(root_dir):
-#         #print(f"{subdir}: {len(files)} items")
-#         t.append([subdir.split("/")[-1],len(files)])
-#     df = pd.DataFrame(t, columns=None)
-#     df.to_csv('list.csv', index=False)
-# path = "../data/lfw2/lfw2/"
-# get_images(path)
-# count_items_in_subdir(path)
+from Ex2.util.format_dataset import format_dataset
+from Ex2 import TRAIN_PATH, TEST_PATH , BATCH_SIZE, EPOCHS
+from Ex2.siamese_model import build_base_model, build_siamese_model, batch_generator
+from keras.optimizers import SGD
+import numpy as np
+import imageio
 
 def get_dataset():
-    format_dataset(TRAIN_PATH, DATASET_PATH)
-    format_dataset(TEST_PATH, DATASET_PATH)
-    model = build_base_model((105,105,1))
+    train = format_dataset(TRAIN_PATH)[:1000]
+    test = format_dataset(TEST_PATH)[:200]
+    model = build_siamese_model((250, 250, 1))
+    # train = [([np.asarray(imageio.imread(train[i][0][0])), np.asarray(imageio.imread(train[i][0][1]))],train[i][1]) for i in range (1,10)]
+    # test = [([np.asarray(imageio.imread(test[i][0][0])), np.asarray(imageio.imread(test[i][0][1]))], test[i][1]) for i in range(1, 10)]
+    train_batch_generator = batch_generator(train, BATCH_SIZE)
+    val_batch_generator = batch_generator(test, BATCH_SIZE)
+
+    # test_batch_generator = batch_generator(test, BATCH_SIZE)
+
+    opt = SGD(lr=0.01, momentum=0.9)
+    model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
+
     print(model.summary())
+
+    model.fit(
+            train_batch_generator,
+            steps_per_epoch=len(train) // BATCH_SIZE,
+            epochs=EPOCHS,
+            validation_data=val_batch_generator,
+            validation_steps=len(test)// BATCH_SIZE)
+
 
 get_dataset()
