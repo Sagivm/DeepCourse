@@ -1,5 +1,5 @@
 import numpy as np
-import imageio
+# import imageio
 import tensorflow as tf
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Input
@@ -21,20 +21,23 @@ def build_base_model(input_shape):
 
     model = tf.keras.Sequential([
         Input(input_shape),
-        Conv2D(64, (10, 10), padding="valid", activation="relu"),
-        MaxPooling2D((2, 2)),
-        Conv2D(128, (7, 7), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
-        MaxPooling2D((2, 2)),
-        Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
-        Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
-        MaxPooling2D((2, 2)),
-        Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
-        Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
+        Conv2D(64, (10, 10), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
+               bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
+        MaxPooling2D(strides=2),
+        Conv2D(128, (7, 7), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
+               bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
+        MaxPooling2D(strides=2),
+        Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
+               bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
+        MaxPooling2D(strides=2),
+        Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
+               bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
+        MaxPooling2D(strides=2),
+        Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
+               bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
+        MaxPooling2D(strides=2),
+        Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
+               bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         Flatten(),
         Dense(2048, activation="sigmoid")
     ])
@@ -64,8 +67,8 @@ def batch_generator(pairs, batch_size):
         for i in range(0, len(indices), batch_size):
             batch_indices = indices[i:i + batch_size]
             batch_pairs = [pairs[j] for j in batch_indices]
-            batch_a = [np.asarray(imageio.imread(pair[0][0])) for pair in batch_pairs]
-            batch_b = [np.asarray(imageio.imread(pair[0][1])) for pair in batch_pairs]
+            batch_a = [tf.keras.utils.load_img(pair[0][0]) for pair in batch_pairs]
+            batch_b = [tf.keras.utils.load_img(pair[0][1]) for pair in batch_pairs]
             batch_labels = [pair[1] for pair in batch_pairs]
             yield [tf.stack(batch_a), tf.stack(batch_b)], tf.stack(batch_labels)
 
