@@ -14,6 +14,7 @@ from tensorflow.keras.regularizers import l2
 # from s.transform import rotate, AffineTransform, warp, rescale
 import random
 
+
 def build_base_model(input_shape):
     W_init_1 = RandomNormal(mean=0, stddev=0.01)
     b_init = RandomNormal(mean=0.5, stddev=0.01)
@@ -28,13 +29,13 @@ def build_base_model(input_shape):
         MaxPooling2D((2, 2)),
         Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
                kernel_regularizer=l2(2e-4)),
-        Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
+        # Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
+        #        kernel_regularizer=l2(2e-4)),
         MaxPooling2D((2, 2)),
         Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
                kernel_regularizer=l2(2e-4)),
-        Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-               kernel_regularizer=l2(2e-4)),
+        # Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
+        #        # kernel_regularizer=l2(2e-4)),
         Flatten(),
         Dense(2048, activation="sigmoid")
     ])
@@ -66,10 +67,24 @@ def batch_generator(pairs, batch_size):
             batch_pairs = [pairs[j] for j in batch_indices]
             batch_a = [np.asarray(imageio.imread(pair[0][0])) for pair in batch_pairs]
             batch_b = [np.asarray(imageio.imread(pair[0][1])) for pair in batch_pairs]
+            # batch_a = [mat / 256 for mat in batch_a]
+            # batch_b = [mat / 256 for mat in batch_b]
             batch_labels = [pair[1] for pair in batch_pairs]
             yield [tf.stack(batch_a), tf.stack(batch_b)], tf.stack(batch_labels)
 
 
+def test_batch_generator(pairs, batch_size):
+    indices = tf.range(len(pairs))
+    tf.random.shuffle(indices)
+    for i in range(0, len(indices), batch_size):
+        batch_indices = indices[i:i + batch_size]
+        batch_pairs = [pairs[j] for j in batch_indices]
+        batch_a = [np.asarray(imageio.imread(pair[0][0])) for pair in batch_pairs]
+        batch_b = [np.asarray(imageio.imread(pair[0][1])) for pair in batch_pairs]
+        batch_a = [mat / 256 for mat in batch_a]
+        batch_b = [mat / 256 for mat in batch_b]
+        batch_labels = [pair[1] for pair in batch_pairs]
+        yield [tf.stack(batch_a), tf.stack(batch_b)], tf.stack(batch_labels)
 
 # def affinetransform(image):
 #     transform = AffineTransform(translation=(-30,0))
