@@ -9,6 +9,7 @@ from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.layers import Flatten
+from tensorflow.keras.layers import BatchNormalization
 from tensorflow.keras.initializers import RandomNormal
 from tensorflow.keras.regularizers import l2
 # from s.transform import rotate, AffineTransform, warp, rescale
@@ -18,24 +19,28 @@ def build_base_model(input_shape):
     W_init_1 = RandomNormal(mean=0, stddev=0.01)
     b_init = RandomNormal(mean=0.5, stddev=0.01)
     W_init_2 = RandomNormal(mean=0, stddev=0.2)
-
     model = tf.keras.Sequential([
         Input(input_shape),
         Conv2D(64, (10, 10), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
                bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         MaxPooling2D(strides=2),
+        BatchNormalization(),
         Conv2D(128, (7, 7), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
                bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         MaxPooling2D(strides=2),
+        BatchNormalization(),
         Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
                bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         MaxPooling2D(strides=2),
+        BatchNormalization(),
         Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
                bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         MaxPooling2D(strides=2),
+        BatchNormalization(),
         Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
                bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         MaxPooling2D(strides=2),
+        BatchNormalization(),
         Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=RandomNormal(mean=0, stddev=0.01),
                bias_initializer=RandomNormal(mean=0.5, stddev=0.01), kernel_regularizer=l2(2e-4)),
         Flatten(),
