@@ -11,9 +11,8 @@ from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.layers import Flatten
 from tensorflow.keras.initializers import RandomNormal
 from tensorflow.keras.regularizers import l2
-# from s.transform import rotate, AffineTransform, warp, rescale
+from skimage.transform import rotate, AffineTransform, warp, rescale
 import random
-
 
 def build_base_model(input_shape):
     W_init_1 = RandomNormal(mean=0, stddev=0.01)
@@ -67,9 +66,13 @@ def batch_generator(pairs, batch_size):
             batch_pairs = [pairs[j] for j in batch_indices]
             batch_a = [np.asarray(imageio.imread(pair[0][0])) for pair in batch_pairs]
             batch_b = [np.asarray(imageio.imread(pair[0][1])) for pair in batch_pairs]
+            batch_labels = [pair[1] for pair in batch_pairs]
             # batch_a = [mat / 256 for mat in batch_a]
             # batch_b = [mat / 256 for mat in batch_b]
-            batch_labels = [pair[1] for pair in batch_pairs]
+            # Prepeocessing
+            batch_a += [transform(image) for image in batch_a]
+            batch_b  += [transform(image) for image in batch_b]
+            batch_labels += batch_labels
             yield [tf.stack(batch_a), tf.stack(batch_b)], tf.stack(batch_labels)
 
 
@@ -81,31 +84,32 @@ def test_batch_generator(pairs, batch_size):
         batch_pairs = [pairs[j] for j in batch_indices]
         batch_a = [np.asarray(imageio.imread(pair[0][0])) for pair in batch_pairs]
         batch_b = [np.asarray(imageio.imread(pair[0][1])) for pair in batch_pairs]
-        batch_a = [mat / 256 for mat in batch_a]
-        batch_b = [mat / 256 for mat in batch_b]
+
+        # batch_a = [mat / 256 for mat in batch_a]
+        # batch_b = [mat / 256 for mat in batch_b]
         batch_labels = [pair[1] for pair in batch_pairs]
         yield [tf.stack(batch_a), tf.stack(batch_b)], tf.stack(batch_labels)
 
-# def affinetransform(image):
-#     transform = AffineTransform(translation=(-30,0))
-#     warp_image = warp(image,transform, mode="wrap")
-#     return warp_image
-#
-# def anticlockwise_rotation(image):
-#     angle= random.randint(0,45)
-#     return rotate(image, angle)
-#
-# def clockwise_rotation(image):
-#     angle= random.randint(0,45)
-#     return rotate(image, -angle)
-#
-#
-# def transform(image):
-#     if random.random() > 0.5:
-#         image = affinetransform(image)
-#     if random.random() > 0.5:
-#         image = anticlockwise_rotation(image)
-#     if random.random() > 0.5:
-#         image = clockwise_rotation(image)
-#
-#     return image
+def affinetransform(image):
+    transform = AffineTransform(translation=(-30,0))
+    warp_image = warp(image,transform, mode="wrap")
+    return warp_image
+
+def anticlockwise_rotation(image):
+    angle= random.randint(0,45)
+    return rotate(image, angle)
+
+def clockwise_rotation(image):
+    angle= random.randint(0,45)
+    return rotate(image, -angle)
+
+
+def transform(image):
+    if random.random() > 0.5:
+        image = affinetransform(image)
+    if random.random() > 0.5:
+        image = anticlockwise_rotation(image)
+    if random.random() > 0.5:
+        image = clockwise_rotation(image)
+
+    return image
