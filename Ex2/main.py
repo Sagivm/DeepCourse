@@ -10,15 +10,18 @@ import random
 
 
 def get_dataset():
-    train = format_dataset(TRAIN_PATH)[::2]
+    # Acquiring the datasets abd divide them into train, validation and test
+    train = format_dataset(TRAIN_PATH)
     random.shuffle(train)
+    train = train[:-200]
+    val = train[-200:]
+    test = format_dataset(TEST_PATH)
 
-    train = train[:-100]
-    val = train[-100:]
+    # Building the model
+    model = build_siamese_model((250, 250, 1))
 
-    test = format_dataset(TEST_PATH)[::8]
-    # random.shuffle(test)
-    # test = test[::4]
+    # Building generators for all sets
+
     train_batch_generator = batch_generator(train, BATCH_SIZE)
     val_batch_generator = batch_generator(val, BATCH_SIZE)
     test_generator = batch_generator(test, BATCH_SIZE, False)
@@ -30,12 +33,15 @@ def train_model(train, val):
     val_batch_generator, val_count = val
 
     model = build_siamese_model((250, 250, 1))
-    model.summary()
+
+    # Model compilation additions
     opt = SGD(learning_rate=0.001, momentum=0.5)
     model.compile(loss='binary_crossentropy', optimizer=opt, metrics=['accuracy'])
-
     callback = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=3)
 
+    model.summary()
+
+    # Training the model
     history = model.fit(
         train_batch_generator,
         steps_per_epoch=train_count // BATCH_SIZE,

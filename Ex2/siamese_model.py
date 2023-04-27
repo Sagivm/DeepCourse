@@ -9,6 +9,13 @@ import random
 
 
 def build_base_model(input_shape):
+    """
+    Build base model based to create a feature vector of an image
+    :param input_shape: image dimensions
+    :type input_shape:
+    :return:
+    :rtype:
+    """
     model = tf.keras.Sequential([
         Input(input_shape),
         Conv2D(64, (10, 10), padding="valid", activation="relu"),
@@ -34,6 +41,13 @@ def build_base_model(input_shape):
 
 
 def build_siamese_model(input_shape):
+    """
+    Build the model with combined base models
+    :param input_shape:
+    :type input_shape:
+    :return:
+    :rtype:
+    """
     x1 = Input(shape=input_shape)
     x2 = Input(shape=input_shape)
 
