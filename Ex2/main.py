@@ -9,13 +9,15 @@ import imageio
 import random
 
 def get_dataset():
-    train = format_dataset(TRAIN_PATH)[::4]
-    random.shuffle(train)
+    train = format_dataset(TRAIN_PATH)[::2]
     random.shuffle(train)
 
     train = train[:-100]
     val = train[-100:]
+
     test = format_dataset(TEST_PATH)[::8]
+    # random.shuffle(test)
+    # test = test[::4]
     model = build_siamese_model((250, 250, 1))
     train_batch_generator = batch_generator(train, BATCH_SIZE)
     val_batch_generator = batch_generator(val, BATCH_SIZE)
@@ -27,14 +29,17 @@ def get_dataset():
 
     print(model.summary())
 
+    callback = tf.keras.callbacks.EarlyStopping(monitor='loss', patience=3)
+
     model.fit(
             train_batch_generator,
             steps_per_epoch=len(train) // BATCH_SIZE,
             epochs=EPOCHS,
             validation_data=val_batch_generator,
-            validation_steps=len(val) // BATCH_SIZE)
+            validation_steps=len(val) // BATCH_SIZE,
+            callbacks=callback)
 
-    y=model.evaluate(test_batch_generator)
+    model.evaluate(test_batch_generator)
     x=0
 
 get_dataset()

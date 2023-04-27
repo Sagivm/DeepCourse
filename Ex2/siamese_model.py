@@ -6,6 +6,7 @@ from tensorflow.keras.layers import Input
 from tensorflow.keras.layers import Conv2D
 from tensorflow.keras.layers import Dense
 from tensorflow.keras.layers import Dropout
+from tensorflow.keras.layers import Dropout
 from tensorflow.keras.layers import GlobalAveragePooling2D
 from tensorflow.keras.layers import MaxPooling2D
 from tensorflow.keras.layers import Flatten
@@ -25,16 +26,15 @@ def build_base_model(input_shape):
         MaxPooling2D((2, 2)),
         Conv2D(128, (7, 7), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
                kernel_regularizer=l2(2e-4)),
+        Dropout(0.2),
         MaxPooling2D((2, 2)),
         Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
                kernel_regularizer=l2(2e-4)),
-        # Conv2D(128, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-        #        kernel_regularizer=l2(2e-4)),
+        Dropout(0.2),
         MaxPooling2D((2, 2)),
         Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
                kernel_regularizer=l2(2e-4)),
-        # Conv2D(256, (4, 4), padding="valid", activation="relu", kernel_initializer=W_init_1, bias_initializer=b_init,
-        #        # kernel_regularizer=l2(2e-4)),
+        Dropout(0.2),
         Flatten(),
         Dense(2048, activation="sigmoid")
     ])
@@ -70,9 +70,9 @@ def batch_generator(pairs, batch_size):
             # batch_a = [mat / 256 for mat in batch_a]
             # batch_b = [mat / 256 for mat in batch_b]
             # Prepeocessing
-            batch_a += [transform(image) for image in batch_a]
-            batch_b  += [transform(image) for image in batch_b]
-            batch_labels += batch_labels
+            batch_a += [transform(image) for image in batch_a for i in range(2)]
+            batch_b += [transform(image) for image in batch_b for i in range(2)]
+            batch_labels += batch_labels * 2
             yield [tf.stack(batch_a), tf.stack(batch_b)], tf.stack(batch_labels)
 
 
