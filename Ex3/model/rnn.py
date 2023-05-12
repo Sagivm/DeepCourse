@@ -1,22 +1,15 @@
-from Ex3 import MAX_SEQ_LENGTH
+from Ex3 import LMODEL_PATH, MAX_SEQ_LENGTH
 # import libraries
 import warnings
 
 warnings.filterwarnings("ignore")
 import pickle
-import re
 import numpy as np
-import nltk
-from nltk.tokenize import word_tokenize
-import requests
-from nltk.tokenize import word_tokenize
 
-from gensim.models import KeyedVectors
+from gensim.models import KeyedVectors, LdaModel
 
 from keras.preprocessing.text import Tokenizer
 from keras.utils import to_categorical
-from keras.utils import pad_sequences
-from keras.utils.vis_utils import plot_model
 from keras.models import Sequential
 from keras.layers import Dense
 from keras.layers import LSTM
@@ -52,7 +45,15 @@ def define_model(vocabulary_size, embedding_size, embedding_weights):
 
 
 def rnn(train_songs_path):
-    train_songs, train_vectors = get_songs(train_songs_path)
+    """
+
+    :param train_songs_path:
+    :type train_songs_path:
+    :return:
+    :rtype:
+    """
+    # Get filtered text
+    train_songs = get_songs(train_songs_path)
     word_tokeniser = Tokenizer()
     word_tokeniser.fit_on_texts(train_songs)
     encoded_songs = word_tokeniser.texts_to_sequences(train_songs)
@@ -61,7 +62,7 @@ def rnn(train_songs_path):
     VOCABULARY_SIZE = len(word_tokeniser.word_index) + 1
     print('Vocabulary Size: {}'.format(VOCABULARY_SIZE))
 
-    # Make sequences
+    # Make sequences with MAX_SEQ_LENGTH + 1
 
     sequences = []
     for sample in encoded_songs:
@@ -75,20 +76,17 @@ def rnn(train_songs_path):
     # divide the sequence into X and y
     X = sequences[:, :-1]  # assign all but last words of a sequence to X
     y = sequences[:, -1]  # assign last word of each sequence to
-
     y = to_categorical(y, num_classes=VOCABULARY_SIZE)
 
-    path = 'model/GoogleNews-vectors-negative300.bin'
 
     # load word2vec using the following function present in the gensim library
-    word2vec = KeyedVectors.load_word2vec_format(path, binary=True)
+    word2vec = KeyedVectors.load_word2vec_format(LMODEL_PATH, binary=True)
 
     # assign word vectors from word2vec model
 
     EMBEDDING_SIZE = 300  # each word in word2vec model is represented using a 300 dimensional vector
-    VOCABULARY_SIZE = len(word_tokeniser.word_index) + 1
 
-    # create an empty embedding matix
+    # create an empty embedding matrix
     embedding_weights = np.zeros((VOCABULARY_SIZE, EMBEDDING_SIZE))
 
     # create a word to index dictionary mapping
@@ -101,9 +99,6 @@ def rnn(train_songs_path):
         except KeyError:
             pass
 
-    # check embedding dimension
-    print("Embeddings shape: {}".format(embedding_weights.shape))
-
     model_wv = define_model(VOCABULARY_SIZE, EMBEDDING_SIZE, embedding_weights)
 
     # compile network
@@ -113,4 +108,6 @@ def rnn(train_songs_path):
     model_wv.summary()
 
     # fit network
-    model_wv.fit(X, y, epochs=75, verbose=1, batch_size=256, validation_split=0.2)
+    history = model_wv.fit(X, y, epochs=2, verbose=1, batch_size=256)
+
+    x = 0

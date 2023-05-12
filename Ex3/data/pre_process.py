@@ -25,17 +25,10 @@ def read_midis(path):
     return [read_midi(os.path.join(path, midi)) for midi in midis]
 
 
-# Used get mean vector for non english phrases, the result for them whould be a 0 vector
-def save_model_vectors(path, language_model, tokenized_corpus):
-    max_len = max([len(song) for song in tokenized_corpus])
+def save_songs(path, tokenized_corpus):
     with open(path, 'wb') as handle:
-        vectorize_corpus = []
-        for sample in tokenized_corpus:
-            tmp = np.stack([language_model.get_mean_vector(text) for text in sample])
-            tmp = np.pad(tmp, ((0, max_len - tmp.shape[0]), (0, 0)))
-            vectorize_corpus.append(tmp)
         tokenized_corpus = [" ".join(sample) for sample in tokenized_corpus]
-        pickle.dump((tokenized_corpus, vectorize_corpus), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(tokenized_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def filter_text(corpus):
@@ -66,7 +59,6 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
     # # TODO: add download for google trained model
 
     # Load Google's pre-trained Word2Vec model.
-    language_model = KeyedVectors.load_word2vec_format('model/GoogleNews-vectors-negative300.bin', binary=True)
     tokenized_train_corpus = [nltk.word_tokenize(sentence.lower().replace('-', ' ')) for sentence in train_corpus]
     tokenized_test_corpus = [nltk.word_tokenize(sentence.lower().replace('-', ' ')) for sentence in test_corpus]
 
@@ -75,12 +67,10 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
 
     # TODO: add fine tune using the corpus
 
-    save_model_vectors(train_dst_path, language_model, tokenized_train_corpus)
-    save_model_vectors(test_dst_path, language_model, tokenized_test_corpus)
+    save_songs(train_dst_path, tokenized_train_corpus)
+    save_songs(test_dst_path, tokenized_test_corpus)
 
-    # save model
-    with open(LMODEL_PATH, 'wb') as handle:
-        pickle.dump(language_model, handle, protocol=pickle.HIGHEST_PROTOCOL)
+
 
 #
 # read_midis("data/midi_files/")
