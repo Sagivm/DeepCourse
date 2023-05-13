@@ -16,8 +16,12 @@ nltk.download('')
 
 
 def read_midi(path):
-    mid = PrettyMIDI(path)
-    return mid.get_pitch_class_transition_matrix()
+    try:
+        mid = PrettyMIDI(path)
+        return mid.get_pitch_class_transition_matrix()
+    except Exception:
+        print(f"INVALID - {path}")
+        return np.zeros((12, 12))
 
 
 def read_midis(path):
@@ -25,10 +29,10 @@ def read_midis(path):
     return [read_midi(os.path.join(path, midi)) for midi in midis]
 
 
-def save_songs(path, tokenized_corpus):
+def save_songs(path, tokenized_corpus,midis):
     with open(path, 'wb') as handle:
         tokenized_corpus = [" ".join(sample) for sample in tokenized_corpus]
-        pickle.dump(tokenized_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump((tokenized_corpus,midis), handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def filter_text(corpus):
@@ -45,6 +49,12 @@ def filter_text(corpus):
     return tokenized_corpus
 
 
+def get_midi_paths(df, base_path):
+    return list(
+        map(lambda x, y: f"{base_path}{x.replace(' ', '_')}_-_{y.replace(' ', '_')}.mid", df.iloc[:, 0].tolist(),
+            df.iloc[:, 1].tolist()))
+
+
 def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
     # Read train
     train_df = pd.read_csv(train_src_path)
@@ -58,6 +68,15 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
 
     # # TODO: add download for google trained model
 
+    # Filter song midi
+    songs_midis_path = get_midi_paths(train_df, "data/midi_files/")
+    train_songs_midis = [read_midi(path) for path in songs_midis_path]
+
+    # Filter song midi
+    songs_midis_path = get_midi_paths(test_df, "data/midi_files/")
+    test_songs_midis = [read_midi(path) for path in songs_midis_path]
+
+    # Filter song lyrics
     # Load Google's pre-trained Word2Vec model.
     tokenized_train_corpus = [nltk.word_tokenize(sentence.lower().replace('-', ' ')) for sentence in train_corpus]
     tokenized_test_corpus = [nltk.word_tokenize(sentence.lower().replace('-', ' ')) for sentence in test_corpus]
@@ -67,10 +86,8 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
 
     # TODO: add fine tune using the corpus
 
-    save_songs(train_dst_path, tokenized_train_corpus)
-    save_songs(test_dst_path, tokenized_test_corpus)
-
-
+    save_songs(train_dst_path, tokenized_train_corpus,train_songs_midis)
+    save_songs(test_dst_path, tokenized_test_corpus, test_songs_midis)
 
 #
 # read_midis("data/midi_files/")
