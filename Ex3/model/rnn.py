@@ -37,13 +37,13 @@ def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
     # lstm layer 2
     # # when using multiple LSTM layers, set return_sequences to True at the previous layer
     # # because the current layer expects a sequential intput rather than a single input
-    lyrics_features = LSTM(512)(lyrics_features)
+    lyrics_features = LSTM(256)(lyrics_features)
 
-    mid_features = Dense(512)(mid_input)
+    mid_features = Dense(256)(mid_input)
 
     x = concatenate([lyrics_features, mid_features])
     # output layer
-    # x = Dense(2048, activation='softmax')(x)
+    # x = Dense(512, activation='relu')(x)
     x = Dense(vocabulary_size, activation='softmax')(x)
 
     return Model(inputs=[lyrics_input, mid_input], outputs=[x])
