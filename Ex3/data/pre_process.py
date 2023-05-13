@@ -17,11 +17,20 @@ nltk.download('')
 
 def read_midi(path):
     try:
-        mid = PrettyMIDI(path)
-        return mid.get_pitch_class_transition_matrix()
+        midi_data = PrettyMIDI(path)
+        # Get piano roll representation of MIDI data
+        # piano_roll = midi_data.get_piano_roll(fs=100)
+        #
+        # # Convert piano roll to binary matrix (1 if note is played, 0 otherwise)
+        # piano_roll_binary = np.where(piano_roll > 0, 1, 0)
+        #
+        # # Flatten matrix into a 1D vector
+        # vector = piano_roll_binary.flatten()
+        return midi_data.get_beats()
+        # return mid.get_pitch_class_transition_matrix()
     except Exception:
         print(f"INVALID - {path}")
-        return np.zeros((12, 12))
+        return np.zeros((1,))
 
 
 def read_midis(path):

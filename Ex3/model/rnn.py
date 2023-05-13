@@ -30,16 +30,20 @@ def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
     # embedding layer
     lyrics_features = Embedding(vocabulary_size, embedding_size, input_length=MAX_SEQ_LENGTH,
                                 weights=[embedding_weights], trainable=True)(lyrics_input)
-    # lstm layer 1
-    lyrics_features = LSTM(32)(lyrics_features)
+    # # lstm layer 1
+    # lyrics_features = LSTM(64, return_sequences= True)(lyrics_features)
+
 
     # lstm layer 2
     # # when using multiple LSTM layers, set return_sequences to True at the previous layer
     # # because the current layer expects a sequential intput rather than a single input
-    # model_wv.add(LSTM(128))
+    lyrics_features = LSTM(512)(lyrics_features)
 
-    x = concatenate([lyrics_features, mid_input],axis=1)
+    mid_features = Dense(512)(mid_input)
+
+    x = concatenate([lyrics_features, mid_features])
     # output layer
+    # x = Dense(2048, activation='softmax')(x)
     x = Dense(vocabulary_size, activation='softmax')(x)
 
     return Model(inputs=[lyrics_input, mid_input], outputs=[x])
@@ -65,6 +69,7 @@ def rnn(train_songs_path):
 
     # Make sequences with MAX_SEQ_LENGTH + 1
 
+    max_midi_len = max([midi.size for midi in midis])
     sequences = []
     midis_by_sequence = []
     for index, sample in enumerate(encoded_songs):
@@ -72,7 +77,9 @@ def rnn(train_songs_path):
         for i in range(MAX_SEQ_LENGTH, len(sample)):
             sample_sequence = sample[i - MAX_SEQ_LENGTH:i + 1]
             sample_sequences.append(sample_sequence)
-            midis_by_sequence.append(np.array(midis[index].flat))
+            midis_by_sequence.append(np.pad(midis[index],[(0,max_midi_len-midis[index].size)]))
+            if midis_by_sequence[-1].size == 1907161:
+                t=0
         sequences.append(np.array(sample_sequences))
     sequences = np.vstack(sequences)
 
