@@ -78,12 +78,12 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
     # # TODO: add download for google trained model
 
     # Filter song midi
-    songs_midis_path = get_midi_paths(train_df, "data/midi_files/")
-    train_songs_midis = [read_midi(path) for path in songs_midis_path]
+    songs_midis_path_train = get_midi_paths(train_df, "data/midi_files/")
+    # train_songs_midis = [read_midi(path) for path in songs_midis_path]
 
     # Filter song midi
-    songs_midis_path = get_midi_paths(test_df, "data/midi_files/")
-    test_songs_midis = [read_midi(path) for path in songs_midis_path]
+    songs_midis_path_test = get_midi_paths(test_df, "data/midi_files/")
+    # test_songs_midis = [read_midi(path) for path in songs_midis_path]
 
     # Filter song lyrics
     # Load Google's pre-trained Word2Vec model.
@@ -95,8 +95,10 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
 
     # TODO: add fine tune using the corpus
 
-    save_songs(train_dst_path, tokenized_train_corpus,train_songs_midis)
-    save_songs(test_dst_path, tokenized_test_corpus, test_songs_midis)
+    return (tokenized_train_corpus, songs_midis_path_train), (tokenized_test_corpus, songs_midis_path_test)
+
+    # save_songs(train_dst_path, tokenized_train_corpus,train_songs_midis)
+    # save_songs(test_dst_path, tokenized_test_corpus, test_songs_midis)
 
 #
 # read_midis("data/midi_files/")
