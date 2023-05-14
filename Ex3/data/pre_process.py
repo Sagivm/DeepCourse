@@ -47,7 +47,7 @@ def save_songs(path, tokenized_corpus,midis):
 def filter_text(corpus):
     tokenized_corpus = []
     stop_words = set(nltk.corpus.stopwords.words('english'))
-    pattern = re.compile('[^a-zA-Z]')
+    pattern = re.compile('[^a-zA-Z&]')
     # Remove the stopwords
     for sample in corpus:
         x = 0
@@ -60,7 +60,7 @@ def filter_text(corpus):
 
 def get_midi_paths(df, base_path):
     return list(
-        map(lambda x, y: f"{base_path}{x.replace(' ', '_')}_-_{y.replace(' ', '_')}.mid", df.iloc[:, 0].tolist(),
+        map(lambda x, y: f"{base_path}{x.strip().replace(' ', '_')}_-_{y.strip().replace(' ', '_')}.mid", df.iloc[:, 0].tolist(),
             df.iloc[:, 1].tolist()))
 
 
