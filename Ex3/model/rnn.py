@@ -52,19 +52,24 @@ def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
     # embedding layer
     lyrics_features = Embedding(vocabulary_size, embedding_size, input_length=MAX_SEQ_LENGTH,
                                 weights=[embedding_weights], trainable=True, )(lyrics_input)
-    # # lstm layer 1
-    # lyrics_features = LSTM(128, return_sequences= True)(lyrics_features)
+    mid_emb = Dense(embedding_size)(mid_input)
 
+    lyrics_features += mid_emb
+
+    # # lstm layer 1
+    lyrics_features = LSTM(128, return_sequences= True)(lyrics_features)
+    lyrics_features = Dropout(.3)(lyrics_features)
     # lstm layer 2
     # # when using multiple LSTM layers, set return_sequences to True at the previous layer
     # # because the current layer expects a sequential intput rather than a single input
     lyrics_features = LSTM(256)(lyrics_features)
+    lyrics_features = Dropout(.3)(lyrics_features)
 
-    mid_features = Dense(256, activation='relu', kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
+    # mid_features = Dense(256, activation='relu', kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
 
-    x = concatenate([lyrics_features, mid_features])
+    # x = concatenate([lyrics_features, mid_features])
     # output layer
-    x = Dense(256, activation='relu')(x)
+    x = Dense(256, activation='relu')(lyrics_features)
     # x = WeightedDropout(0.5)(x)
     x = Dense(vocabulary_size, activation='softmax')(x)
     # x = RandomProportionalLayer(vocabulary_size)(x)
