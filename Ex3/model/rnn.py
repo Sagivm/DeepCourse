@@ -1,7 +1,10 @@
+import numpy
+
 from Ex3 import LMODEL_PATH, MAX_SEQ_LENGTH
 # import libraries
 import warnings
 import tensorflow as tf
+
 warnings.filterwarnings("ignore")
 import pickle
 import numpy as np
@@ -34,10 +37,10 @@ class WeightedDropout(Dropout):
         return super().call(inputs, rate=rate, training=training)
 
 
-
 def get_songs(path):
     with open(path, 'rb') as handle:
-        return pickle.load(handle)
+        t: dict = pickle.load(handle)
+        return t.values()
 
 
 def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
@@ -62,11 +65,9 @@ def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
     x = concatenate([lyrics_features, mid_features])
     # output layer
     x = Dense(256, activation='relu')(x)
-    #x = WeightedDropout(0.5)(x)
+    # x = WeightedDropout(0.5)(x)
     x = Dense(vocabulary_size, activation='softmax')(x)
     # x = RandomProportionalLayer(vocabulary_size)(x)
-
-
 
     return Model(inputs=[lyrics_input, mid_input], outputs=[x])
 
@@ -80,26 +81,43 @@ def rnn(train_songs_path):
     :rtype:
     """
     # Get filtered text
-    train_songs, midis = get_songs(train_songs_path)
-    word_tokeniser = Tokenizer(filters='!"#$%()*+,-./:;<=>?@[\\]^_`{|}~\t\n',)
-    word_tokeniser.fit_on_texts(train_songs)
-    encoded_songs = word_tokeniser.texts_to_sequences(train_songs)
+    train_songs, _ = get_songs(train_songs_path)
+    word_tokeniser = Tokenizer(filters='!"#$%()*+,./:;<=>?@[\\]^_{|}~\t\n', )
+    songs_texts = []
+    for song in train_songs:
+        songs_texts.append(" ".join([word[0] for word in song]))
 
+    word_tokeniser.fit_on_texts(songs_texts)
+    encoded_songs = word_tokeniser.texts_to_sequences(songs_texts)
+
+    max_midi_len = 0
+    # retrun encoding to train_songs:
+    for i in range(len(encoded_songs)):
+        encoded_song = encoded_songs[i]
+        train_song = train_songs[i]
+
+        for j in range(len(encoded_song)):
+            max_midi_len = max(max_midi_len, len(train_song[j][1]))
+            train_song[j] = (encoded_song[j], train_song[j][1])
     # check the size of the vocabulary
     VOCABULARY_SIZE = len(word_tokeniser.word_index) + 1
     print('Vocabulary Size: {}'.format(VOCABULARY_SIZE))
 
     # Make sequences with MAX_SEQ_LENGTH + 1
 
-    max_midi_len = max([midi.size for midi in midis])
+    # max_midi_len = max([midi.size for midi in midis])
     sequences = []
     midis_by_sequence = []
-    for index, sample in enumerate(encoded_songs):
+    for index, sample in enumerate(train_songs):
         sample_sequences = []
         for i in range(MAX_SEQ_LENGTH, len(sample)):
-            sample_sequence = sample[i - MAX_SEQ_LENGTH:i + 1]
+            sample_sequence = [x[0] for x in sample[i - MAX_SEQ_LENGTH:i + 1]]
             sample_sequences.append(sample_sequence)
-            midis_by_sequence.append(np.pad(midis[index], [(0, max_midi_len - midis[index].size)]))
+            vector_sequence = [np.array(x[1]) for x in sample[i - MAX_SEQ_LENGTH:i + 1]]
+            tmp = np.pad(vector_sequence[0], [(0, max_midi_len - (vector_sequence[0]).size)])
+            for v in vector_sequence[1:]:
+                tmp = np.add(tmp,v)
+            midis_by_sequence.append(tmp)
         sequences.append(np.array(sample_sequences))
     sequences = np.vstack(sequences)
 
@@ -145,7 +163,7 @@ def rnn(train_songs_path):
         pickle.dump(history, handle, protocol=pickle.HIGHEST_PROTOCOL)
     x = 0
 
-    return model_wv, word_tokeniser,max_midi_len
+    return model_wv, word_tokeniser, max_midi_len
 
 
 # generate a sequence from a language model
