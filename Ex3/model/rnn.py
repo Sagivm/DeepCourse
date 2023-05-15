@@ -55,13 +55,13 @@ def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
     # lstm layer 2
     # # when using multiple LSTM layers, set return_sequences to True at the previous layer
     # # because the current layer expects a sequential intput rather than a single input
-    lyrics_features = LSTM(64)(lyrics_features)
+    lyrics_features = LSTM(256)(lyrics_features)
 
-    mid_features = Dense(64, activation='relu', kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
+    mid_features = Dense(256, activation='relu', kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
 
     x = concatenate([lyrics_features, mid_features])
     # output layer
-    x = Dense(128, activation='relu')(x)
+    x = Dense(256, activation='relu')(x)
     #x = WeightedDropout(0.5)(x)
     x = Dense(vocabulary_size, activation='softmax')(x)
     # x = RandomProportionalLayer(vocabulary_size)(x)
@@ -81,7 +81,7 @@ def rnn(train_songs_path):
     """
     # Get filtered text
     train_songs, midis = get_songs(train_songs_path)
-    word_tokeniser = Tokenizer()
+    word_tokeniser = Tokenizer(filters='!"#$%()*+,-./:;<=>?@[\\]^_`{|}~\t\n',)
     word_tokeniser.fit_on_texts(train_songs)
     encoded_songs = word_tokeniser.texts_to_sequences(train_songs)
 
@@ -100,8 +100,6 @@ def rnn(train_songs_path):
             sample_sequence = sample[i - MAX_SEQ_LENGTH:i + 1]
             sample_sequences.append(sample_sequence)
             midis_by_sequence.append(np.pad(midis[index], [(0, max_midi_len - midis[index].size)]))
-            if midis_by_sequence[-1].size == 1907161:
-                t = 0
         sequences.append(np.array(sample_sequences))
     sequences = np.vstack(sequences)
 
@@ -140,7 +138,7 @@ def rnn(train_songs_path):
     model_wv.summary()
 
     # fit network
-    history = model_wv.fit([X, np.stack(midis_by_sequence)], y, epochs=4, verbose=1, batch_size=64,
+    history = model_wv.fit([X, np.stack(midis_by_sequence)], y, epochs=50, verbose=1, batch_size=128,
                            validation_split=0.1)
 
     with open("run.dump", 'wb') as handle:
@@ -182,4 +180,4 @@ def generate_words(test_path, model, word_tokeniser, MAX_SEQ_LENGTH, seed, n_wor
         # append predicted word to text
         text += " " + next_word
 
-    print(text)
+    [print(line) for line in text.split("&")]

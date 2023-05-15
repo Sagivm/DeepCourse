@@ -14,4 +14,4 @@ TSET_VECTOR_PATH = config["DATASET"]["vectorized_test_path"]
 LMODEL_PATH = config["MODEL"]["language_model_path"] # Can be downloaded from https://www.kaggle.com/datasets/sandreds/googlenewsvectorsnegative300
 
 EMBEDDING_SIZE = 300
-MAX_SEQ_LENGTH = 4
+MAX_SEQ_LENGTH = 7
