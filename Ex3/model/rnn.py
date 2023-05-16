@@ -15,7 +15,7 @@ from keras.preprocessing.text import Tokenizer
 from keras.utils import to_categorical
 from keras.models import Model, Sequential
 from keras.layers import Dense, Input, Dropout
-from keras.layers import LSTM, concatenate, GRU
+from keras.layers import LSTM, concatenate, GRU, Add
 from keras.layers import Embedding
 from keras.regularizers import L1L2
 from keras.utils import pad_sequences
@@ -49,21 +49,25 @@ def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
     lyrics_input = Input(shape=(None,), name="lyrics")
     mid_input = Input(shape=(midi_size,), name="mid")
 
+
+
+
     # embedding layer
     lyrics_features = Embedding(vocabulary_size, embedding_size, input_length=MAX_SEQ_LENGTH,
-                                weights=[embedding_weights], trainable=True, )(lyrics_input)
+                                weights=[embedding_weights], trainable=False )(lyrics_input)
+    mid_features = Dense(300, activation='relu',kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
     # # lstm layer 1
     # lyrics_features = LSTM(128, return_sequences= True)(lyrics_features)
-
+    added = Add()([lyrics_features, mid_features])
     # lstm layer 2
     # # when using multiple LSTM layers, set return_sequences to True at the previous layer
     # # because the current layer expects a sequential intput rather than a single input
-    lyrics_features = LSTM(256)(lyrics_features)
-
-    mid_features = Dense(256, activation='relu', kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
-
-    x = concatenate([lyrics_features, mid_features])
-    # output layer
+    x= LSTM(128,return_sequences=True)(added)
+    x = LSTM(128)(x)
+    # mid_features = Dense(256, activation='relu',)(mid_input)
+    #
+    # x = concatenate([lyrics_features, mid_features])
+    # # output layer
     x = Dense(256, activation='relu')(x)
     # x = WeightedDropout(0.5)(x)
     x = Dense(vocabulary_size, activation='softmax')(x)
@@ -156,7 +160,7 @@ def rnn(train_songs_path):
     model_wv.summary()
 
     # fit network
-    history = model_wv.fit([X, np.stack(midis_by_sequence)], y, epochs=50, verbose=1, batch_size=128,
+    history = model_wv.fit([X, np.stack(midis_by_sequence)], y, epochs=50, verbose=1, batch_size=256,
                            validation_split=0.1)
 
     with open("run.dump", 'wb') as handle:
@@ -183,7 +187,7 @@ def generate_words(test_path, model, word_tokeniser, MAX_SEQ_LENGTH, seed, n_wor
         # pad sequences
         padded_words = pad_sequences([encoded_words], maxlen=MAX_SEQ_LENGTH, padding='pre')
 
-        # predict next word
+        # predict next word6
         predict_x = model.predict([padded_words, midis[0]])
         prediction = np.argmax(predict_x, axis=1)
         # prediction = model.predict_classes(padded_words, verbose=0)

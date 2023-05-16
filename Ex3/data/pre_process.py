@@ -51,7 +51,8 @@ def filter_text(corpus):
     # Remove the stopwords
     for sample in corpus:
         x = 0
-        tokenized_sample = [token.replace("'s", "") for token in sample if (not token.lower() in stop_words)]
+        # tokenized_sample = [token.replace("'s", "") for token in sample if (not token.lower() in stop_words)]
+        tokenized_sample = [token.replace("'s", "") for token in sample]
         tokenized_sample = [pattern.sub('', token) for token in tokenized_sample]
         tokenized_sample = [token for token in tokenized_sample if len(token) != 0 and token != 'a']
         tokenized_corpus.append(tokenized_sample)
