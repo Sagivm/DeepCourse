@@ -43,37 +43,65 @@ def get_songs(path):
         return t.values()
 
 
-def define_model(vocabulary_size, embedding_size, embedding_weights, midi_size):
-    model_wv = Sequential()
+# def define_model(vocabulary_size, embedding_size, embedding_weights):
+#     model_wv = Sequential()
+#
+#     lyrics_input = Input(shape=(None, MAX_SEQ_LENGTH,), name="lyrics")
+#     mid_input = Input(shape=(None, 128), name="mid")
+#
+#     # embedding layer
+#     lyrics_features = Embedding(vocabulary_size, embedding_size, input_length=MAX_SEQ_LENGTH,
+#                                 weights=[embedding_weights], trainable=False)(lyrics_input)
+#     mid_features = Dense(300, activation='relu', kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
+#     # # lstm layer 1
+#     # lyrics_features = LSTM(128, return_sequences= True)(lyrics_features)
+#     added = Add()([lyrics_features, mid_features])
+#     # lstm layer 2
+#     # # when using multiple LSTM layers, set return_sequences to True at the previous layer
+#     # # because the current layer expects a sequential intput rather than a single input
+#     x = LSTM(128, return_sequences=True)(added)
+#     x = LSTM(128)(x)
+#     # mid_features = Dense(256, activation='relu',)(mid_input)
+#     #
+#     # x = concatenate([lyrics_features, mid_features])
+#     # # output layer
+#     x = Dense(256, activation='relu')(x)
+#     # x = WeightedDropout(0.5)(x)
+#     x = Dense(vocabulary_size, activation='softmax')(x)
+#     # x = RandomProportionalLayer(vocabulary_size)(x)
+#
+#     return Model(inputs=[lyrics_input, mid_input], outputs=[x])
 
-    lyrics_input = Input(shape=(None,), name="lyrics")
-    mid_input = Input(shape=(midi_size,), name="mid")
+class CustomModel(tf.keras.Model):
+    def __init__(self, vocabulary_size, embedding_size, embedding_weights):
+        super().__init__(self)
+        self.lyrics_embedding = tf.keras.layers.Embedding(vocabulary_size, embedding_size,
+                                                          weights=[embedding_weights], mask_zero=True)
+        self.midi_embedding = tf.keras.layers.Dense(embedding_size)
+        self.gru = tf.keras.layers.GRU(256, return_state=True, return_sequences=True)
+        self.dense = tf.keras.layers.Dense(vocabulary_size)
+
+    def call(self, inputs, states=None, return_state=False, training=False):
+        words, midis = inputs
+
+        w_emb = self.lyrics_embedding(words, training=training)
+        mask = self.lyrics_embedding.compute_mask(words)
+        m_emb = self.midi_embedding(midis, training=training)
+        x = w_emb + m_emb
+
+        if states is None:
+            states = self.gru.get_initial_state(x)
+        x, states = self.gru(x, initial_state=states, training=training, mask=mask)
+        x = self.dense(x, training=training)
+
+        if return_state:
+            return x, states
+        else:
+            return x
 
 
-
-
-    # embedding layer
-    lyrics_features = Embedding(vocabulary_size, embedding_size, input_length=MAX_SEQ_LENGTH,
-                                weights=[embedding_weights], trainable=False )(lyrics_input)
-    mid_features = Dense(300, activation='relu',kernel_regularizer=L1L2(l1=1e-5, l2=1e-4))(mid_input)
-    # # lstm layer 1
-    # lyrics_features = LSTM(128, return_sequences= True)(lyrics_features)
-    added = Add()([lyrics_features, mid_features])
-    # lstm layer 2
-    # # when using multiple LSTM layers, set return_sequences to True at the previous layer
-    # # because the current layer expects a sequential intput rather than a single input
-    x= LSTM(128,return_sequences=True)(added)
-    x = LSTM(128)(x)
-    # mid_features = Dense(256, activation='relu',)(mid_input)
-    #
-    # x = concatenate([lyrics_features, mid_features])
-    # # output layer
-    x = Dense(256, activation='relu')(x)
-    # x = WeightedDropout(0.5)(x)
-    x = Dense(vocabulary_size, activation='softmax')(x)
-    # x = RandomProportionalLayer(vocabulary_size)(x)
-
-    return Model(inputs=[lyrics_input, mid_input], outputs=[x])
+def split_input_target(words, midis):
+    return (words[:-1], midis[:-1]), words[1:]
 
 
 def rnn(train_songs_path):
@@ -108,27 +136,53 @@ def rnn(train_songs_path):
     print('Vocabulary Size: {}'.format(VOCABULARY_SIZE))
 
     # Make sequences with MAX_SEQ_LENGTH + 1
+    sequences = None
+    max_sample_len = max(map(len, train_songs))
+    for sample in train_songs:
+        words, midis = list(map(lambda x: x[0], sample)), list(map(lambda x: x[1], sample))
+        words = np.pad(words, (0, max_sample_len - len(words))).astype(np.int32)
+        midis = np.pad(midis, ((0, max_sample_len - len(midis)), (0, 0))).astype(np.int32)
+
+        words_ds = tf.data.Dataset.from_tensor_slices(words)
+        midis_ds = tf.data.Dataset.from_tensor_slices(midis)
+
+        sample_ds = tf.data.Dataset.zip((words_ds, midis_ds))
+        if sequences is None:
+            sequences = sample_ds.batch(MAX_SEQ_LENGTH + 1, drop_remainder=True)
+        else:
+            sequences = sequences.concatenate(sample_ds.batch(MAX_SEQ_LENGTH + 1, drop_remainder=True))
+
+    dataset = sequences.map(split_input_target)
+
+    BATCH_SIZE = 64
+    BUFFER_SIZE = 10000
+
+    dataset = (
+        dataset
+        .shuffle(BUFFER_SIZE)
+        .batch(BATCH_SIZE, drop_remainder=True)
+        .prefetch(tf.data.experimental.AUTOTUNE))
 
     # max_midi_len = max([midi.size for midi in midis])
-    sequences = []
-    midis_by_sequence = []
-    for index, sample in enumerate(train_songs):
-        sample_sequences = []
-        for i in range(MAX_SEQ_LENGTH, len(sample)):
-            sample_sequence = [x[0] for x in sample[i - MAX_SEQ_LENGTH:i + 1]]
-            sample_sequences.append(sample_sequence)
-            vector_sequence = [np.array(x[1]) for x in sample[i - MAX_SEQ_LENGTH:i + 1]]
-            tmp = np.pad(vector_sequence[0], [(0, max_midi_len - (vector_sequence[0]).size)])
-            for v in vector_sequence[1:]:
-                tmp = np.add(tmp,v)
-            midis_by_sequence.append(tmp)
-        sequences.append(np.array(sample_sequences))
-    sequences = np.vstack(sequences)
-
-    # divide the sequence into X and y
-    X = sequences[:, :-1]  # assign all but last words of a sequence to X
-    y = sequences[:, -1]  # assign last word of each sequence to
-    y = to_categorical(y, num_classes=VOCABULARY_SIZE)
+    # sequences = []
+    # midis_by_sequence = []
+    # for index, sample in enumerate(train_songs):
+    #     sample_sequences = []
+    #     for i in range(MAX_SEQ_LENGTH, len(sample)):
+    #         sample_sequence = [x[0] for x in sample[i - MAX_SEQ_LENGTH:i + 1]]
+    #         sample_sequences.append(sample_sequence)
+    #         vector_sequence = [np.array(x[1]) for x in sample[i - MAX_SEQ_LENGTH:i + 1]]
+    #         tmp = np.pad(vector_sequence[0], [(0, max_midi_len - (vector_sequence[0]).size)])
+    #         for v in vector_sequence[1:]:
+    #             tmp = np.add(tmp,v)
+    #         midis_by_sequence.append(tmp)
+    #     sequences.append(np.array(sample_sequences))
+    # sequences = np.vstack(sequences)
+    #
+    # # divide the sequence into X and y
+    # X = sequences[:, :-1]  # assign all but last words of a sequence to X
+    # y = sequences[:, -1]  # assign last word of each sequence to
+    # y = to_categorical(y, num_classes=VOCABULARY_SIZE)
 
     # load word2vec using the following function present in the gensim library
     word2vec = KeyedVectors.load_word2vec_format(LMODEL_PATH, binary=True)
@@ -150,22 +204,24 @@ def rnn(train_songs_path):
         except KeyError:
             pass
 
-    midi_size = midis_by_sequence[0].size
-    model_wv = define_model(VOCABULARY_SIZE, EMBEDDING_SIZE, embedding_weights, midi_size)
+    # midi_size = midis_by_sequence[0].size
+    # model_wv = define_model(VOCABULARY_SIZE, EMBEDDING_SIZE, embedding_weights, midi_size)
+    model_wv = CustomModel(VOCABULARY_SIZE, EMBEDDING_SIZE, embedding_weights)
 
     # compile network
-    model_wv.compile(loss='categorical_crossentropy', optimizer='adam', metrics=['accuracy'])
+    loss = tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True)  # from_logics=True since there is no
+                                                                            # activation of the last dense
+    model_wv.compile(loss=loss, optimizer='adam')
+    model_wv.build(input_shape=[(MAX_SEQ_LENGTH, 1), (MAX_SEQ_LENGTH, 128)])
 
     # summarize defined model
     model_wv.summary()
 
     # fit network
-    history = model_wv.fit([X, np.stack(midis_by_sequence)], y, epochs=50, verbose=1, batch_size=256,
-                           validation_split=0.1)
+    history = model_wv.fit(dataset, epochs=50, verbose=1)
 
     with open("run.dump", 'wb') as handle:
         pickle.dump(history, handle, protocol=pickle.HIGHEST_PROTOCOL)
-    x = 0
 
     return model_wv, word_tokeniser, max_midi_len
 
