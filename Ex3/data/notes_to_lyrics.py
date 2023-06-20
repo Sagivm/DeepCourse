@@ -45,7 +45,7 @@ def build_set(s):
             vectors.append([(word, [0] * 128) for word in sample])
         else:
             vectors.append(create_vectors(sample, midi))
-    return vectors
+    return vectors[:20]
 
 
 if __name__ == '__main__':

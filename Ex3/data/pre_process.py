@@ -38,10 +38,9 @@ def read_midis(path):
     return [read_midi(os.path.join(path, midi)) for midi in midis]
 
 
-def save_songs(path, tokenized_corpus,midis):
+def save_songs(path, tokenized_corpus):
     with open(path, 'wb') as handle:
-        tokenized_corpus = [" ".join(sample) for sample in tokenized_corpus]
-        pickle.dump((tokenized_corpus,midis), handle, protocol=pickle.HIGHEST_PROTOCOL)
+        pickle.dump(tokenized_corpus, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
 
 def filter_text(corpus):
@@ -95,11 +94,11 @@ def read_songs(train_src_path, test_src_path, train_dst_path, test_dst_path):
     tokenized_test_corpus = filter_text(tokenized_test_corpus)
 
     # TODO: add fine tune using the corpus
-
+    save_songs("data/tokenized_train_text.pkl", [" ".join(i) for i in tokenized_train_corpus])
+    save_songs("data/tokenized_test_text.pkl", [" ".join(i) for i in tokenized_test_corpus])
     return (tokenized_train_corpus, songs_midis_path_train), (tokenized_test_corpus, songs_midis_path_test)
 
-    # save_songs(train_dst_path, tokenized_train_corpus,train_songs_midis)
-    # save_songs(test_dst_path, tokenized_test_corpus, test_songs_midis)
+
 
 #
 # read_midis("data/midi_files/")

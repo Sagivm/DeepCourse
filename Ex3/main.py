@@ -7,7 +7,7 @@ from Ex3.data.pre_process import read_songs
 from Ex3.model.rnn import rnn, generate_words
 from Ex3.data import notes_to_lyrics
 
-read_songs(TRAIN_PATH, TEST_PATH, TRAIN_VECTOR_PATH, TSET_VECTOR_PATH)
+#read_songs(TRAIN_PATH, TEST_PATH, TRAIN_VECTOR_PATH, TSET_VECTOR_PATH)
 model_wv, word_tokeniser, max_midi_len = rnn(TRAIN_VECTOR_PATH)
 
 seed_text = "close your eyes give"
