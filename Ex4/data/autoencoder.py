@@ -1,7 +1,7 @@
 from gensim.models import KeyedVectors, LdaModel
 
 from keras.layers import Input, Dense, Embedding, LSTM, Activation
-from keras.models import Model
+from keras.models import Model,Sequential
 from keras.preprocessing.text import Tokenizer
 from keras.utils import pad_sequences
 from keras.optimizers import Adam
@@ -20,7 +20,7 @@ def get_songs(path):
         return t
 
 
-def autoencoder():
+def build_autoencoder():
 
     #train,test = get_songs(TRAIN_VECTOR_PATH).values()
     train_text = get_songs('data/tokenized_train_text.pkl')
@@ -56,22 +56,28 @@ def autoencoder():
 
 
     # Define the encoding layer
-    encoder = LSTM(64, return_sequences=False,)(embedding_layer)
+    encoder = LSTM(128, return_sequences=False)(embedding_layer)
 
-    # Repeat the encoded representation
-    repeat_layer = RepeatVector(max_sequence_length)(encoder)
-
+    encoder = Dense(128,activation='relu')(encoder)
+    # # Repeat the encoded representation
+    # repeat_layer = RepeatVector(max_sequence_length)(encoder)
+    encoder_model = Model(inputs=input_layer, outputs=encoder)
     # Define the decoding layer
-    decoder = LSTM(64, return_sequences=True)(repeat_layer)
-
-    logits = TimeDistributed(Dense(len(word_index)+1))(decoder)
+    # decoder = Input((128,))
+    decoder = Dense(128,activation='relu')(encoder)
+    decoder = RepeatVector(max_sequence_length)(decoder)
+    decoder = LSTM(128, return_sequences=True,input_shape=(1,64))(decoder)
+    decoder = Dense(len(word_index)+1,activation='softmax')(decoder)
+    # logits = TimeDistributed(Dense(len(word_index)+1))(decoder)
 
     # Create the autoencoder model
-    autoencoder = Model(input_layer, Activation('softmax')(logits))
-    autoencoder.compile(loss='sparse_categorical_crossentropy',
-              optimizer=Adam(1e-3),
-              metrics=['accuracy'])
-    autoencoder.summary()
+    # autoencoder_outputs = decoder(encoder_model(input_layer))
+    # autoencoder = Model(input=input_layer, outputs=autoencoder_outputs)
+    autoencoder = Model(inputs=input_layer, outputs=decoder)
+    # autoencoder.compile(loss='sparse_categorical_crossentropy',
+    #           optimizer=Adam(1e-3),
+    #           metrics=['accuracy'])
+    # autoencoder.summary()
     # Compile the model
     autoencoder.compile(optimizer='adam', loss='sparse_categorical_crossentropy')
 
@@ -83,4 +89,4 @@ def autoencoder():
 
     autoencoder.save('autoencoder.h5')
 
-autoencoder()
+# build_autoencoder()
