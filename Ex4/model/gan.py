@@ -31,7 +31,7 @@ def build_generator_model(embedding_length,mid_dim, noise_dim=16):
 
     # Output layer with embedding length
     model.add(layers.Dense(embedding_length, activation='tanh'))
-
+    model.compile(loss='binary_crossentropy', optimizer='adam')
     return model
 #
 # # Define the embedding length
@@ -83,7 +83,7 @@ def build_discriminator_model(song_input_size,melody_input_size):
     # Discriminator model
     discriminator = models.Model(inputs=[input_1, input_2, input_3], outputs=output)
     discriminator.summary()
-
+    discriminator.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return discriminator
 
 def build_gan_model(generator, discriminator,gan_input_dim):
