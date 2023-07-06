@@ -12,6 +12,17 @@ def get_songs(path):
 
 # Generator model
 def build_generator_model(embedding_length,mid_dim, noise_dim=16):
+    """
+    Define generator model which gets an input of desired output embedding length , mid dim and noise dim
+    :param embedding_length:
+    :type embedding_length:
+    :param mid_dim:
+    :type mid_dim:
+    :param noise_dim:
+    :type noise_dim:
+    :return:
+    :rtype:
+    """
     model = tf.keras.Sequential()
 
     # Dense layer with input vector size of 128 + random noise
@@ -33,34 +44,19 @@ def build_generator_model(embedding_length,mid_dim, noise_dim=16):
     model.add(layers.Dense(embedding_length, activation='tanh'))
     model.compile(loss='binary_crossentropy', optimizer='adam')
     return model
-#
-# # Define the embedding length
-# embedding_length = 300
-#
-# # Random noise dimension
-# noise_dim = 16
-#
-# # Create an instance of the generator model
-# generator = make_generator_model(embedding_length)
-#
-# # Print the model summary
-# generator.summary()
 
-
-#
-# train,test = get_songs(TRAIN_VECTOR_PATH).values()
-# mid_encoding = list()
-# for sample in train:
-#     sample_mid = [x[1] for x in sample]
-#     noise = np.random.normal(0, 1, (noise_dim))
-#     mid_encoding.append(np.concatenate((np.average(sample_mid, axis=0),noise)) )
-#
-#
-# generator.predict(np.array(mid_encoding))
-# x=0
 
 # Define the discriminator
 def build_discriminator_model(song_input_size,melody_input_size):
+    """
+    Build disciminator model which gets the size of a song embedding and the size of the melody
+    :param song_input_size:
+    :type song_input_size:
+    :param melody_input_size:
+    :type melody_input_size:
+    :return:
+    :rtype:
+    """
     input_shape_1 = (song_input_size,)
     input_shape_2 = (song_input_size,)
     input_shape_3 = (melody_input_size,)
@@ -85,22 +81,3 @@ def build_discriminator_model(song_input_size,melody_input_size):
     discriminator.summary()
     discriminator.compile(optimizer='adam', loss='binary_crossentropy', metrics=['accuracy'])
     return discriminator
-
-def build_gan_model(generator, discriminator,gan_input_dim):
-    # Freeze the discriminator during GAN training
-    discriminator.trainable = False
-
-    # GAN input layer (noise)
-    gan_input = Input(shape=gan_input_dim)
-
-    # Generate samples using the generator
-    generated_samples = generator(gan_input)
-
-    # Discriminator output for generated samples
-    gan_output = discriminator(generated_samples)
-
-    # GAN model
-    gan = models.Model(inputs=gan_input, outputs=gan_output)
-    gan.summary()
-
-    return gan

@@ -89,5 +89,3 @@ def build_autoencoder():
 
     encoder_model.save('encoder.h5')
     autoencoder.save('autoencoder.h5')
-
-# build_autoencoder()
