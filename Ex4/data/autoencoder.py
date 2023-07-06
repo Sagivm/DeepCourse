@@ -18,7 +18,7 @@ def get_songs(path):
         return t
 
 
-def autoencoder():
+def build_autoencoder():
 
     #train,test = get_songs(TRAIN_VECTOR_PATH).values()
     train_text = get_songs('data/tokenized_train_text.pkl')
@@ -44,7 +44,6 @@ def autoencoder():
             pass
 
     # Define the input shape
-    # Define the input shape
     input_shape = (max_sequence_length,)
 
     # Define the input layer
@@ -55,7 +54,6 @@ def autoencoder():
                                 output_dim=EMBEDDING_DIM,
                                 input_length=max_sequence_length,
                                 weights=[embedding_weights], trainable=False,
-                                mask_zero=True,
                                 name='Embedding')(input_layer)
 
     # Define the encoding layer
@@ -92,4 +90,4 @@ def autoencoder():
     encoder_model.save('encoder.h5')
     autoencoder.save('autoencoder.h5')
 
-autoencoder()
+# build_autoencoder()
