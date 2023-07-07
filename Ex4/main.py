@@ -25,6 +25,7 @@ def main():
     lyrics = list()
     train, test = get_songs(TRAIN_VECTOR_PATH).values()
     train = train[:595]
+
     mid_encoding = list()
     for sample in train:
         sample_mid = [x[1] for x in sample]
@@ -32,6 +33,11 @@ def main():
         # mid_encoding.append(np.concatenate((np.average(sample_mid, axis=0),noise)) )
         mid_encoding.append(np.average(sample_mid, axis=0))
         lyrics.append([x[0] for x in sample])
+    tokenizer = Tokenizer(filters='!"#$%()*+,./:;<=>?@[\\]^_{|}~\t\n', )
+    tokenizer.fit_on_texts(lyrics)
+    word_index = tokenizer.word_index
+    sequences = tokenizer.texts_to_sequences(lyrics)
+
     epochs = 64
     batch_size = 35
     for epoch in range(epochs):
@@ -40,14 +46,10 @@ def main():
             song_batch_lyrics = lyrics[batch * batch_size:(batch + 1) * batch_size]
             # Create song encoding to be passed to the autoencoder
 
-            tokenizer = Tokenizer(filters='!"#$%()*+,./:;<=>?@[\\]^_{|}~\t\n', )
-            tokenizer.fit_on_texts(song_batch_lyrics)
-            word_index = tokenizer.word_index
-            sequences = tokenizer.texts_to_sequences(song_batch_lyrics)
-
+            batch_sequences = sequences[batch * batch_size:(batch + 1) * batch_size]
             # Pad sequences to a fixed length
             max_sequence_length = 1521
-            padded_sequences = pad_sequences(sequences, maxlen=max_sequence_length, padding='post')
+            padded_sequences = pad_sequences(batch_sequences, maxlen=max_sequence_length, padding='post')
 
             # get batch songs encodings
             song_encodings = encoder.predict(padded_sequences)
@@ -97,5 +99,6 @@ def main():
     # Save trained generator and discriminator
     generator.save('generator.h5')
     discriminator.save('discriminator.h5')
+
 
 main()
