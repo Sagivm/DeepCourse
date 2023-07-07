@@ -69,8 +69,12 @@ def build_autoencoder():
 
     logits = TimeDistributed(Dense(len(word_index) + 1))(decoder)
 
+    decoder_model = Model(encoder, Activation('softmax')(logits), name='Decoder')
+
+    dec_out = decoder_model(encoder)
+
     # Create the autoencoder model
-    autoencoder = Model(input_layer, Activation('softmax')(logits), name='Autoencoder')
+    autoencoder = Model(input_layer, dec_out, name='AutoEncoder')
 
     # Print the model summary
     autoencoder.summary()
@@ -88,4 +92,5 @@ def build_autoencoder():
                     epochs=20, batch_size=32)
 
     encoder_model.save('encoder.h5')
+    decoder_model.save('decoder.h5')
     autoencoder.save('autoencoder.h5')
